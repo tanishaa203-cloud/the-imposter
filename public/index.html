@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>THE IMPOSTOR</title>
+  <style>
+    body { background: #0b0a14; color: #ece9ff; font-family: system-ui, sans-serif;
+           margin: 0; padding: 16px; }
+    #app { max-width: 480px; margin: 0 auto; }
+    h1 { text-align: center; letter-spacing: 0.1em; }
+    h1 span { color: #ff3b5c; }
+    .card { background: #171527; border-radius: 14px; padding: 16px; margin: 12px 0; }
+    input, button { width: 100%; padding: 14px; margin: 6px 0; border-radius: 10px;
+                    border: 0; font-size: 1rem; box-sizing: border-box; }
+    input { background: #211e38; color: #ece9ff; }
+    button { background: #ff3b5c; color: white; font-weight: bold; cursor: pointer; }
+    button:disabled { opacity: 0.4; cursor: default; }
+    button.vote { background: #211e38; border: 1px solid #3a3566; }
+    .code { font-size: 2.5rem; text-align: center; letter-spacing: 0.3em; color: #ffc83d; }
+    .player { background: #211e38; padding: 10px; border-radius: 10px; margin: 6px 0; }
+    .error { color: #ff3b5c; min-height: 1.2em; }
+    .hidden { display: none; }
+    .word { text-align: center; font-size: 2rem; font-weight: bold; padding: 22px;
+            background: #2b1d5a; border-radius: 14px; cursor: pointer; }
+    .hint { color: #8f8aae; text-align: center; }
+    #timer { font-size: 2rem; font-weight: bold; text-align: center; color: #ffc83d; }
+    .turn { text-align: center; font-size: 1.2rem; margin: 8px 0; }
+    .mine { color: #2ee59d; font-weight: bold; }
+    .hintrow { background: #211e38; padding: 8px 10px; border-radius: 10px; margin: 5px 0; }
+    .hintrow small { color: #8f8aae; }
+    .result { display: flex; justify-content: space-between; background: #211e38;
+              padding: 10px; border-radius: 10px; margin: 6px 0; }
+    .result.top { outline: 2px solid #ff3b5c; }
+    .big { text-align: center; font-size: 1.3rem; font-weight: bold; margin: 12px 0; }
+    .win { text-align: center; font-size: 1.8rem; font-weight: 900; color: #ffc83d;
+           animation: pulse 1.2s infinite; padding: 10px; }
+    @keyframes pulse { 50% { transform: scale(1.08); text-shadow: 0 0 30px #ffc83d; } }
+    .fall { position: fixed; top: -40px; font-size: 1.6rem; pointer-events: none;
+            animation: fall 3.5s linear infinite; }
+    @keyframes fall { to { transform: translateY(110vh) rotate(360deg); } }
+    .gain { color: #2ee59d; font-weight: bold; }
+    .imp { color: #ff3b5c; text-align: center; font-size: 1.8rem; font-weight: 900;
+           letter-spacing: 0.2em; animation: pulse 1.2s infinite; text-shadow: 0 0 20px #ff3b5c; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>THE <span>IMPOSTOR</span></h1>
+
+    <div id="home" class="card">
+      <input id="name" placeholder="Your name" maxlength="14">
+      <button id="createBtn">Create room</button>
+      <input id="codeInput" placeholder="ROOM CODE" maxlength="5">
+      <button id="joinBtn">Join room</button>
+    </div>
+
+    <div id="lobby" class="card hidden">
+      <div>Room code</div>
+      <div id="roomCode" class="code"></div>
+      <h3>Players</h3>
+      <div id="players"></div>
+      <button id="startBtn" class="hidden">Start game</button>
+      <p id="waiting" class="hint"></p>
+    </div>
+
+    <div id="game" class="hidden">
+      <div class="card">
+        <div id="impTitle" class="hidden">
+          <div class="imp">🕵️ IMPOSTOR</div>
+          <p class="hint" style="color:#ff3b5c">You are the Impostor! Blend in and guess the others' word.</p>
+        </div>
+        <p class="hint">Your secret word (tap to show or hide)</p>
+        <div id="word" class="word">Tap to reveal</div>
+      </div>
+
+      <div class="card">
+        <div id="timer"></div>
+        <div id="turn" class="turn"></div>
+        <div id="hintBox" class="hidden">
+          <input id="hintInput" placeholder="Type your hint..." maxlength="60">
+          <button id="hintBtn">Submit hint</button>
+        </div>
+      </div>
+
+      <div id="voteCard" class="card hidden">
+        <h3>Who is the Impostor?</h3>
+        <div id="voteButtons"></div>
+        <p id="voteStatus" class="hint"></p>
+      </div>
+
+      <div id="resultCard" class="card hidden">
+        <h3>Votes revealed</h3>
+        <div id="resultList"></div>
+        <div id="suspect" class="big"></div>
+      </div>
+
+      <div id="guessCard" class="card hidden">
+        <h3>Final guess</h3>
+        <p id="guessWait" class="hint">The Impostor is making a final guess...</p>
+        <div id="guessBox" class="hidden">
+          <p>You are the Impostor! Guess the word everyone else has (+15 points).</p>
+          <input id="guessInput" placeholder="Their word..." maxlength="40">
+          <button id="guessBtn">Submit guess</button>
+        </div>
+      </div>
+
+      <div id="finalCard" class="card hidden">
+        <div id="winner" class="win"></div>
+        <div id="finalInfo"></div>
+        <h3>Leaderboard</h3>
+        <div id="board"></div>
+        <h3>Votes</h3>
+        <div id="finalVotes"></div>
+        <button id="againBtn" class="hidden">Play again</button>
+        <p id="againWait" class="hint hidden">Waiting for the host to play again...</p>
+      </div>
+
+      <div class="card">
+        <h3>Hints</h3>
+        <div id="hints"></div>
+      </div>
+    </div>
+
+    <div id="confetti"></div>
+    <div id="error" class="error"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const el = (id) => document.getElementById(id);
+    let myWord = "";
+    let showing = false;
+    let isHost = false;
+    let ends = 0;
+    let tick = null;
+
+    function safe(text) {
+      const d = document.createElement("div");
+      d.textContent = text;
+      return d.innerHTML;
+    }
+
+    function startClock(endTime) {
+      ends = endTime;
+      clearInterval(tick);
+      const update = () => {
+        const left = Math.max(0, Math.ceil((ends - Date.now()) / 1000));
+        el("timer").textContent = left + "s";
+      };
+      update();
+      tick = setInterval(update, 250);
+    }
+
+    function showHints(hints) {
+      el("hints").innerHTML = hints.length
+        ? hints.map((h) =>
+            `<div class="hintrow"><small>Round ${h.round}</small> <b>${safe(h.name)}:</b> ${safe(h.text)}</div>`
+          ).join("")
+        : '<p class="hint">No hints yet.</p>';
+    }
+
+    function resetGameUI() {
+      clearInterval(tick);
+      el("timer").textContent = "";
+      el("turn").textContent = "";
+      ["hintBox", "voteCard", "resultCard", "guessCard", "guessBox", "finalCard", "impTitle"]
+        .forEach((id) => el(id).classList.add("hidden"));
+      el("guessInput").value = "";
+      el("confetti").innerHTML = "";
+      showing = false;
+      el("word").textContent = "Tap to reveal";
+    }
+
+    el("createBtn").onclick = () => {
+      const name = el("name").value.trim();
+      if (!name) { el("error").textContent = "Enter your name first."; return; }
+      socket.emit("createRoom", name);
+    };
+
+    el("joinBtn").onclick = () => {
+      const name = el("name").value.trim();
+      const code = el("codeInput").value.trim().toUpperCase();
+      if (!name) { el("error").textContent = "Enter your name first."; return; }
+      if (!code) { el("error").textContent = "Enter a room code."; return; }
+      socket.emit("joinRoom", { code, name });
+    };
+
+    el("startBtn").onclick = () => socket.emit("startGame");
+    el("againBtn").onclick = () => socket.emit("playAgain");
+
+    el("word").onclick = () => {
+      showing = !showing;
+      el("word").textContent = showing ? myWord : "Tap to reveal";
+    };
+
+    function sendHint() {
+      const text = el("hintInput").value.trim();
+      if (!text) return;
+      socket.emit("sendHint", text);
+      el("hintInput").value = "";
+    }
+    el("hintBtn").onclick = sendHint;
+    el("hintInput").onkeydown = (e) => { if (e.key === "Enter") sendHint(); };
+
+    function sendGuess() {
+      const text = el("guessInput").value.trim();
+      if (!text) return;
+      socket.emit("guess", text);
+      el("guessBox").classList.add("hidden");
+      el("guessWait").classList.remove("hidden");
+      el("guessWait").textContent = "Guess sent! Revealing results...";
+    }
+    el("guessBtn").onclick = sendGuess;
+    el("guessInput").onkeydown = (e) => { if (e.key === "Enter") sendGuess(); };
+
+    socket.on("problem", (message) => { el("error").textContent = message; });
+
+    socket.on("lobby", (room) => {
+      el("error").textContent = "";
+      el("home").classList.add("hidden");
+      el("lobby").classList.remove("hidden");
+      el("roomCode").textContent = room.code;
+      el("players").innerHTML = room.players
+        .map((p) => `<div class="player">${safe(p.name)}${p.id === room.host ? " 👑" : ""}</div>`)
+        .join("");
+
+      isHost = room.host === socket.id;
+      el("startBtn").classList.toggle("hidden", !isHost);
+      el("startBtn").disabled = room.players.length < 4;
+      el("startBtn").textContent =
+        room.players.length < 4 ? "Need 4 to 6 players" : "Start game";
+      el("waiting").textContent = isHost ? "" : "Waiting for the host to start...";
+    });
+
+    socket.on("backToLobby", () => {
+      resetGameUI();
+      el("game").classList.add("hidden");
+      el("lobby").classList.remove("hidden");
+    });
+
+    socket.on("yourWord", (data) => {
+      myWord = data.word;
+      el("impTitle").classList.toggle("hidden", !data.impostor);
+    });
+
+    socket.on("gameStarted", () => {
+      const keepTitle = !el("impTitle").classList.contains("hidden");
+      resetGameUI();
+      el("impTitle").classList.toggle("hidden", !keepTitle);
+      el("lobby").classList.add("hidden");
+      el("game").classList.remove("hidden");
+    });
+
+    socket.on("turn", (t) => {
+      el("error").textContent = "";
+      const mine = t.currentId === socket.id;
+      el("turn").innerHTML = mine
+        ? `<span class="mine">Round ${t.round} of 3: your turn!</span>`
+        : `Round ${t.round} of 3: ${safe(t.currentName)}'s turn`;
+      el("hintBox").classList.toggle("hidden", !mine);
+      if (mine) el("hintInput").focus();
+      showHints(t.hints);
+      startClock(t.ends);
+    });
+
+    socket.on("voteStart", (v) => {
+      el("error").textContent = "";
+      el("hintBox").classList.add("hidden");
+      el("turn").textContent = "Voting time! Pick who you think is the Impostor.";
+      showHints(v.hints);
+      startClock(v.ends);
+
+      el("voteCard").classList.remove("hidden");
+      el("voteStatus").textContent = "Votes stay hidden until everyone has voted.";
+      el("voteButtons").innerHTML = "";
+      v.players
+        .filter((p) => p.id !== socket.id)
+        .forEach((p) => {
+          const b = document.createElement("button");
+          b.className = "vote";
+          b.textContent = p.name;
+          b.onclick = () => socket.emit("vote", p.id);
+          el("voteButtons").appendChild(b);
+        });
+    });
+
+    socket.on("voteLocked", () => {
+      el("voteButtons").innerHTML = '<p class="hint">Your vote is locked in.</p>';
+    });
+
+    socket.on("voteCount", (c) => {
+      el("voteStatus").textContent = `Votes in: ${c.count}/${c.total}`;
+    });
+
+    socket.on("voteResult", (r) => {
+      clearInterval(tick);
+      el("timer").textContent = "";
+      el("turn").textContent = "";
+      el("voteCard").classList.add("hidden");
+      el("resultCard").classList.remove("hidden");
+      el("resultList").innerHTML = r.tally
+        .map((t, i) =>
+          `<div class="result ${i === 0 && r.suspectName ? "top" : ""}"><span>${safe(t.name)}</span><b>${t.votes} vote${t.votes === 1 ? "" : "s"}</b></div>`
+        ).join("");
+      el("suspect").textContent = r.suspectName
+        ? `${r.suspectName} is the suspect!`
+        : "It's a tie! There is no clear suspect.";
+    });
+
+    socket.on("guessStart", (g) => {
+      el("guessCard").classList.remove("hidden");
+      el("guessWait").classList.remove("hidden");
+      el("guessWait").textContent = "The Impostor is making a final guess...";
+      el("guessBox").classList.add("hidden");
+      startClock(g.ends);
+    });
+
+    socket.on("guessPrompt", () => {
+      el("guessWait").classList.add("hidden");
+      el("guessBox").classList.remove("hidden");
+      el("guessInput").focus();
+    });
+
+    socket.on("results", (r) => {
+      clearInterval(tick);
+      el("timer").textContent = "";
+      el("guessCard").classList.add("hidden");
+      el("finalCard").classList.remove("hidden");
+      showHints(r.hints);
+
+      el("winner").textContent = `🏆 ${r.board[0].name} leads with ${r.board[0].total}!`;
+      el("finalInfo").innerHTML =
+        `<div class="big">The Impostor was ${safe(r.impostorName)}!</div>` +
+        `<p class="hint">Everyone else's word: <b>${safe(r.mainWord)}</b><br>` +
+        `Impostor's word: <b>${safe(r.impostorWord)}</b></p>` +
+        `<p class="hint">${r.caught ? "The Impostor was caught." : "The Impostor escaped detection!"}<br>` +
+        `Final guess: ${r.guess ? safe(r.guess) + (r.correct ? " ✅" : " ❌") : "none"}</p>`;
+
+      el("board").innerHTML = r.board
+        .map((b, i) =>
+          `<div class="result"><span>${i + 1}. ${safe(b.name)}</span><span><span class="gain">+${b.gained}</span> &nbsp; <b>${b.total}</b></span></div>`
+        ).join("");
+
+      el("finalVotes").innerHTML = r.votes.length
+        ? r.votes.map((v) =>
+            `<div class="hint">${safe(v.voter)} voted for ${safe(v.target)}</div>`
+          ).join("")
+        : '<p class="hint">No votes were cast.</p>';
+
+      el("againBtn").classList.toggle("hidden", !isHost);
+      el("againWait").classList.toggle("hidden", isHost);
+
+      el("confetti").innerHTML = Array.from({ length: 12 }, (_, i) =>
+        `<span class="fall" style="left:${i * 8.5}%;animation-delay:${i * 0.3}s">${["🎉", "✨", "🏆"][i % 3]}</span>`
+      ).join("");
+    });
+  </script>
+</body>
+</html>
